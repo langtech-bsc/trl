@@ -238,7 +238,6 @@ class RewardTrainer(Trainer):
                         and len(x["input_ids_rejected"]) <= max_length,
                         num_proc=args.dataset_num_proc,
                     )
-
         super().__init__(
             model=model,
             args=args,
