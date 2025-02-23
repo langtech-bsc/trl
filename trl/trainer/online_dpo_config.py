@@ -83,6 +83,12 @@ class OnlineDPOConfig(TrainingArguments):
             "help": "Path to the reward model. Either `judge` or `reward_model_path` must be set, but not both."
         },
     )
+    ref_model_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Path to the reference model"
+        },
+    )
     judge: Optional[str] = field(
         default=None,
         metadata={
