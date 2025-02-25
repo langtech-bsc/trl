@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import tempfile
 import unittest
 from functools import partial
@@ -31,30 +30,30 @@ from .testing_utils import require_no_wandb, require_sklearn
 
 class BCOTrainerTester(unittest.TestCase):
     def setUp(self):
-        self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
+        self.model_id = "trl-internal-testing/dummy-GPT2-correct-vocab"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.ref_model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # get t5 as seq2seq example:
-        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration"
+        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration-correct-vocab"
         self.t5_model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
         self.t5_ref_model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
         self.t5_tokenizer = AutoTokenizer.from_pretrained(model_id)
 
         # get embedding model
-        model_id = "trl-internal-testing/tiny-BartModel"
+        model_id = "facebook/bart-base"
         self.embedding_model = AutoModel.from_pretrained(model_id)
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(model_id)
 
     @parameterized.expand(
         [
-            ("qwen", True, True, "standard_unpaired_preference"),
-            ("qwen", True, False, "standard_unpaired_preference"),
-            ("qwen", False, True, "standard_unpaired_preference"),
-            ("qwen", False, False, "standard_unpaired_preference"),
-            ("qwen", True, True, "conversational_unpaired_preference"),
+            ["gpt2", True, True, "standard_unpaired_preference"],
+            ["gpt2", True, False, "standard_unpaired_preference"],
+            ["gpt2", False, True, "standard_unpaired_preference"],
+            ["gpt2", False, False, "standard_unpaired_preference"],
+            ["gpt2", True, True, "conversational_unpaired_preference"],
         ]
     )
     @require_sklearn
@@ -74,7 +73,7 @@ class BCOTrainerTester(unittest.TestCase):
 
             dummy_dataset = load_dataset("trl-internal-testing/zen", config_name)
 
-            if name == "qwen":
+            if name == "gpt2":
                 model = self.model
                 ref_model = self.ref_model
                 tokenizer = self.tokenizer
@@ -98,10 +97,11 @@ class BCOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 new_param = trainer.model.get_parameter(n)
-                if param.sum() != 0:  # ignore 0 biases
+                # check the params have changed - ignore 0 biases
+                if param.sum() != 0:
                     self.assertFalse(torch.equal(param.cpu(), new_param.cpu()))
 
     @require_sklearn
@@ -160,10 +160,10 @@ class BCOTrainerTester(unittest.TestCase):
             self.assertListEqual(tokenized_dataset["prompt"], train_dataset["prompt"])
             self.assertListEqual(tokenized_dataset["completion"], train_dataset["completion"])
             self.assertListEqual(tokenized_dataset["label"], train_dataset["label"])
-            self.assertListEqual(tokenized_dataset["prompt_input_ids"][0], [46518, 374, 2664, 1091])
-            self.assertListEqual(tokenized_dataset["prompt_attention_mask"][0], [1, 1, 1, 1])
-            self.assertListEqual(tokenized_dataset["answer_input_ids"][0], [27261, 13])
-            self.assertListEqual(tokenized_dataset["answer_attention_mask"][0], [1, 1])
+            self.assertListEqual(tokenized_dataset["prompt_input_ids"][0], [5377, 11141])
+            self.assertListEqual(tokenized_dataset["prompt_attention_mask"][0], [1, 1])
+            self.assertListEqual(tokenized_dataset["answer_input_ids"][0], [318, 1365, 621, 8253, 13])
+            self.assertListEqual(tokenized_dataset["answer_attention_mask"][0], [1, 1, 1, 1, 1])
 
             fn_kwargs = {
                 "prefix": "",
@@ -178,14 +178,14 @@ class BCOTrainerTester(unittest.TestCase):
             self.assertListEqual(processed_dataset["prompt"], train_dataset["prompt"])
             self.assertListEqual(processed_dataset["completion"], train_dataset["completion"])
             self.assertListEqual(processed_dataset["label"], train_dataset["label"])
-            self.assertListEqual(processed_dataset["prompt_input_ids"][0], [46518, 374, 2664, 1091])
-            self.assertListEqual(processed_dataset["prompt_attention_mask"][0], [1, 1, 1, 1])
+            self.assertListEqual(processed_dataset["prompt_input_ids"][0], [50256, 5377, 11141])
+            self.assertListEqual(processed_dataset["prompt_attention_mask"][0], [1, 1, 1])
             self.assertListEqual(
-                processed_dataset["completion_input_ids"][0], [46518, 374, 2664, 1091, 27261, 13, 151645]
+                processed_dataset["completion_input_ids"][0], [50256, 5377, 11141, 318, 1365, 621, 8253, 13, 50256]
             )
-            self.assertListEqual(processed_dataset["completion_attention_mask"][0], [1, 1, 1, 1, 1, 1, 1])
+            self.assertListEqual(processed_dataset["completion_attention_mask"][0], [1, 1, 1, 1, 1, 1, 1, 1, 1])
             self.assertListEqual(
-                processed_dataset["completion_labels"][0], [-100, -100, -100, -100, 27261, 13, 151645]
+                processed_dataset["completion_labels"][0], [-100, -100, -100, 318, 1365, 621, 8253, 13, 50256]
             )
 
     @require_sklearn
@@ -219,10 +219,11 @@ class BCOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 new_param = trainer.model.get_parameter(n)
-                if param.sum() != 0:  # ignore 0 biases
+                # check the params have changed - ignore 0 biases
+                if param.sum() != 0:
                     self.assertFalse(torch.equal(param.cpu(), new_param.cpu()))
 
     @require_sklearn
@@ -266,10 +267,11 @@ class BCOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 new_param = trainer.model.get_parameter(n)
-                if param.sum() != 0:  # ignore 0 biases
+                # check the params have changed - ignore 0 biases
+                if param.sum() != 0:
                     self.assertFalse(torch.equal(param.cpu(), new_param.cpu()))
 
     @require_sklearn
@@ -315,11 +317,12 @@ class BCOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 if "lora" in n:
                     new_param = trainer.model.get_parameter(n)
-                    if param.sum() != 0:  # ignore 0 biases
+                    # check the params have changed - ignore 0 biases
+                    if param.sum() != 0:
                         self.assertFalse(torch.equal(param.cpu(), new_param.cpu()))
 
     @require_sklearn
@@ -342,8 +345,8 @@ class BCOTrainerTester(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                expected_regex="`generate_during_eval=True` requires Weights and Biases or Comet to be installed."
-                " Please install `wandb` or `comet-ml` to resolve.",
+                expected_regex="`generate_during_eval=True` requires Weights and Biases to be installed."
+                " Please install with `pip install wandb` to resolve.",
             ):
                 BCOTrainer(
                     model=self.model,

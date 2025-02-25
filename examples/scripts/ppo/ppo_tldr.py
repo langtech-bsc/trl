@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 import shutil
 
-import torch
 from accelerate import PartialState
 from datasets import load_dataset
 from transformers import (
@@ -24,24 +23,16 @@ from transformers import (
     HfArgumentParser,
 )
 
-from trl import (
-    ModelConfig,
-    PPOConfig,
-    PPOTrainer,
-    ScriptArguments,
-    get_kbit_device_map,
-    get_peft_config,
-    get_quantization_config,
-)
+from trl import ModelConfig, PPOConfig, PPOTrainer, ScriptArguments
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
 
 """
 python examples/scripts/ppo/ppo_tldr.py \
-    --dataset_name trl-internal-testing/tldr-preference-sft-trl-style \
+    --dataset_name trl-internal-testing/tldr-preference-sft-trl-style
     --dataset_test_split validation \
     --learning_rate 3e-6 \
-    --output_dir models/minimal/ppo_tldr \
+    --output_dir models/minimal/ppo \
     --per_device_train_batch_size 1 \
     --gradient_accumulation_steps 64 \
     --total_episodes 30000 \
@@ -50,13 +41,11 @@ python examples/scripts/ppo/ppo_tldr.py \
     --reward_model_path cleanrl/EleutherAI_pythia-1b-deduped__reward__tldr \
     --missing_eos_penalty 1.0 \
     --stop_token eos \
-    --response_length 53 \
-    --eval_strategy steps \
-    --eval_steps 100
+    --response_length 53
 
 accelerate launch --config_file examples/accelerate_configs/deepspeed_zero2.yaml \
     examples/scripts/ppo/ppo_tldr.py \
-    --dataset_name trl-internal-testing/tldr-preference-sft-trl-style \
+    --dataset_name trl-internal-testing/tldr-preference-sft-trl-style
     --dataset_test_split validation \
     --output_dir models/minimal/ppo_tldr \
     --learning_rate 3e-6 \
@@ -68,61 +57,43 @@ accelerate launch --config_file examples/accelerate_configs/deepspeed_zero2.yaml
     --reward_model_path cleanrl/EleutherAI_pythia-1b-deduped__reward__tldr \
     --local_rollout_forward_batch_size 16 \
     --missing_eos_penalty 1.0 \
-    --stop_token eos \
-    --eval_strategy steps \
-    --eval_steps 100
+    --stop_token eos
 """
 
 
 if __name__ == "__main__":
     parser = HfArgumentParser((ScriptArguments, PPOConfig, ModelConfig))
-    script_args, training_args, model_args = parser.parse_args_into_dataclasses()
+    script_args, training_args, model_config = parser.parse_args_into_dataclasses()
     # remove output_dir if exists
     shutil.rmtree(training_args.output_dir, ignore_errors=True)
 
     ################
     # Model & Tokenizer
     ################
-    torch_dtype = (
-        model_args.torch_dtype if model_args.torch_dtype in ["auto", None] else getattr(torch, model_args.torch_dtype)
-    )
-    quantization_config = get_quantization_config(model_args)
-    model_kwargs = dict(
-        revision=model_args.model_revision,
-        attn_implementation=model_args.attn_implementation,
-        torch_dtype=torch_dtype,
-        device_map=get_kbit_device_map() if quantization_config is not None else None,
-        quantization_config=quantization_config,
-    )
-
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, padding_side="left", trust_remote_code=model_args.trust_remote_code
+        model_config.model_name_or_path,
+        padding_side="left",
+        trust_remote_code=model_config.trust_remote_code,
     )
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     if tokenizer.chat_template is None:
         tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
     value_model = AutoModelForSequenceClassification.from_pretrained(
-        training_args.reward_model_path, trust_remote_code=model_args.trust_remote_code, num_labels=1
+        training_args.reward_model_path, trust_remote_code=model_config.trust_remote_code, num_labels=1
     )
     reward_model = AutoModelForSequenceClassification.from_pretrained(
-        training_args.reward_model_path, trust_remote_code=model_args.trust_remote_code, num_labels=1
+        training_args.reward_model_path, trust_remote_code=model_config.trust_remote_code, num_labels=1
+    )
+    ref_policy = AutoModelForCausalLM.from_pretrained(
+        training_args.sft_model_path, trust_remote_code=model_config.trust_remote_code
     )
     policy = AutoModelForCausalLM.from_pretrained(
-        training_args.sft_model_path, trust_remote_code=model_args.trust_remote_code
+        training_args.sft_model_path, trust_remote_code=model_config.trust_remote_code
     )
-
-    peft_config = get_peft_config(model_args)
-    if peft_config is None:
-        ref_policy = AutoModelForCausalLM.from_pretrained(
-            training_args.sft_model_path, trust_remote_code=model_args.trust_remote_code
-        )
-    else:
-        ref_policy = None
-
     ################
     # Dataset
     ################
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    dataset = load_dataset(script_args.dataset_name)
     train_dataset = dataset[script_args.dataset_train_split]
     eval_dataset = dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None
 
@@ -159,15 +130,14 @@ if __name__ == "__main__":
     # Training
     ################
     trainer = PPOTrainer(
-        args=training_args,
+        config=training_args,
         processing_class=tokenizer,
-        model=policy,
-        ref_model=ref_policy,
+        policy=policy,
+        ref_policy=ref_policy,
         reward_model=reward_model,
         value_model=value_model,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        peft_config=peft_config,
     )
     trainer.train()
 

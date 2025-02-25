@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import tempfile
 import unittest
 
@@ -21,9 +20,9 @@ from transformers import AutoModelForCausalLM, AutoModelForSequenceClassificatio
 from transformers.testing_utils import require_peft
 from transformers.utils import is_peft_available
 
-from trl import NashMDConfig, NashMDTrainer
+from trl import NashMDConfig, NashMDTrainer, PairRMJudge
 
-from .testing_utils import RandomPairwiseJudge, require_llm_blender
+from .testing_utils import require_llm_blender
 
 
 if is_peft_available():
@@ -32,10 +31,10 @@ if is_peft_available():
 
 class TestNashMDTrainer(unittest.TestCase):
     def setUp(self):
-        self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
+        self.model_id = "trl-internal-testing/dummy-GPT2-correct-vocab"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.ref_model = AutoModelForCausalLM.from_pretrained(self.model_id)
-        self.reward_model = AutoModelForSequenceClassification.from_pretrained(self.model_id, num_labels=1)
+        self.reward_model = AutoModelForSequenceClassification.from_pretrained("EleutherAI/pythia-14m", num_labels=1)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -175,7 +174,7 @@ class TestNashMDTrainer(unittest.TestCase):
                 report_to="none",
             )
             dummy_dataset = load_dataset("trl-internal-testing/zen", config_name)
-            judge = RandomPairwiseJudge()
+            judge = PairRMJudge()
 
             trainer = NashMDTrainer(
                 model=self.model,

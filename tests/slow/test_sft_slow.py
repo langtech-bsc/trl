@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import gc
 import itertools
 import tempfile
@@ -23,6 +22,7 @@ from datasets import load_dataset
 from parameterized import parameterized
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from transformers.testing_utils import (
+    require_bitsandbytes,
     require_liger_kernel,
     require_peft,
     require_torch_accelerator,
@@ -33,7 +33,6 @@ from transformers.utils import is_peft_available
 from trl import SFTConfig, SFTTrainer
 from trl.models.utils import setup_chat_format
 
-from ..testing_utils import require_bitsandbytes
 from .testing_constants import DEVICE_MAP_OPTIONS, GRADIENT_CHECKPOINTING_KWARGS, MODELS_TO_TEST, PACKING_OPTIONS
 
 
@@ -105,7 +104,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -140,7 +138,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -177,7 +174,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -213,7 +209,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -250,7 +245,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -294,7 +288,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name, device_map=device_map)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -334,7 +327,6 @@ class SFTTrainerSlowTester(unittest.TestCase):
 
             model = AutoModelForCausalLM.from_pretrained(model_name, quantization_config=quantization_config)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 
             trainer = SFTTrainer(
                 model,
@@ -378,9 +370,7 @@ class SFTTrainerSlowTester(unittest.TestCase):
             model = AutoModelForCausalLM.from_pretrained(model_name, quantization_config=quantization_config)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-            if tokenizer.chat_template is None:
-                model, tokenizer = setup_chat_format(model, tokenizer)
-            tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
+            model, tokenizer = setup_chat_format(model, tokenizer)
 
             trainer = SFTTrainer(
                 model,

@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2023 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import tempfile
 import unittest
 from functools import partial
@@ -26,13 +25,13 @@ from trl import IterativeSFTTrainer
 
 class IterativeTrainerTester(unittest.TestCase):
     def setUp(self):
-        self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
+        self.model_id = "trl-internal-testing/dummy-GPT2-correct-vocab"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # get t5 as seq2seq example:
-        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration"
+        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration-correct-vocab-calibrated"
         self.t5_model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
         self.t5_tokenizer = AutoTokenizer.from_pretrained(model_id)
 
@@ -71,8 +70,8 @@ class IterativeTrainerTester(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ["qwen", "tensor"],
-            ["qwen", "text"],
+            ["gpt2", "tensor"],
+            ["gpt2", "text"],
             ["t5", "tensor"],
             ["t5", "text"],
         ]
@@ -94,7 +93,7 @@ class IterativeTrainerTester(unittest.TestCase):
                     "texts_labels": dummy_dataset["texts_labels"],
                 }
 
-            if model_name == "qwen":
+            if model_name == "gpt2":
                 model = self.model
                 tokenizer = self.tokenizer
             else:

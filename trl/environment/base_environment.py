@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2022 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import re
+import warnings
 from typing import Optional
 
 import torch
@@ -144,10 +145,8 @@ class TextHistory:
         Print the text history.
         """
         if not is_rich_available():
-            raise ImportError(
-                "The `rich` library is required to display text with formatting. "
-                "Install it using `pip install rich`."
-            )
+            warnings.warn("install rich to display text")
+            return
 
         text = Text(self.text)
         text.stylize(self.prompt_color, self.text_spans[0][0], self.text_spans[1][0])
@@ -168,10 +167,8 @@ class TextHistory:
         Print the history tokens.
         """
         if not is_rich_available():
-            raise ImportError(
-                "The `rich` library is required to display tokens with formatting. "
-                "Install it using `pip install rich`."
-            )
+            warnings.warn("install rich to display tokens")
+            return
 
         text = Text()
         prompt_end = self.token_spans[0][1]
@@ -195,10 +192,8 @@ class TextHistory:
         Print the colour legend.
         """
         if not is_rich_available():
-            raise ImportError(
-                "The `rich` library is required to display colour legends with formatting. "
-                "Install it using `pip install rich`."
-            )
+            warnings.warn("install rich to display colour legend")
+            return
         text = Text("\n\n(Colour Legend: ")
         text.append("Prompt", style=self.prompt_color)
         text.append("|")

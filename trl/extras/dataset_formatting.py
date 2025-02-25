@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,24 +27,20 @@ FORMAT_MAPPING = {
 }
 
 
-def conversations_formatting_function(
-    tokenizer: AutoTokenizer, messages_field: Literal["messages", "conversations"], tools: Optional[list] = None
-):
+def conversations_formatting_function(tokenizer: AutoTokenizer, messages_field: Literal["messages", "conversations"]):
     r"""
     return a callable function that takes in a "messages" dataset and returns a formatted dataset, based on the tokenizer
-    apply chat template to the dataset along with the schema of the list of functions in the tools list.
+    apply chat template to the dataset
     """
 
     def format_dataset(examples):
         if isinstance(examples[messages_field][0], list):
             output_texts = []
             for i in range(len(examples[messages_field])):
-                output_texts.append(
-                    tokenizer.apply_chat_template(examples[messages_field][i], tokenize=False, tools=tools)
-                )
+                output_texts.append(tokenizer.apply_chat_template(examples[messages_field][i], tokenize=False))
             return output_texts
         else:
-            return tokenizer.apply_chat_template(examples[messages_field], tokenize=False, tools=tools)
+            return tokenizer.apply_chat_template(examples[messages_field], tokenize=False)
 
     return format_dataset
 
@@ -76,7 +72,7 @@ def instructions_formatting_function(tokenizer: AutoTokenizer):
 
 
 def get_formatting_func_from_dataset(
-    dataset: Union[Dataset, ConstantLengthDataset], tokenizer: AutoTokenizer, tools: Optional[list] = None
+    dataset: Union[Dataset, ConstantLengthDataset], tokenizer: AutoTokenizer
 ) -> Optional[Callable]:
     r"""
     Finds the correct formatting function based on the dataset structure. Currently supported datasets are:
@@ -94,11 +90,11 @@ def get_formatting_func_from_dataset(
         if "messages" in dataset.features:
             if dataset.features["messages"] == FORMAT_MAPPING["chatml"]:
                 logging.info("Formatting dataset with chatml format")
-                return conversations_formatting_function(tokenizer, "messages", tools)
+                return conversations_formatting_function(tokenizer, "messages")
         if "conversations" in dataset.features:
             if dataset.features["conversations"] == FORMAT_MAPPING["chatml"]:
                 logging.info("Formatting dataset with chatml format")
-                return conversations_formatting_function(tokenizer, "conversations", tools)
+                return conversations_formatting_function(tokenizer, "conversations")
         elif dataset.features == FORMAT_MAPPING["instruction"]:
             logging.info("Formatting dataset with instruction format")
             return instructions_formatting_function(tokenizer)

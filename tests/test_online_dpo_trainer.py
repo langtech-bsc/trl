@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,19 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import tempfile
 import unittest
 
 from datasets import load_dataset
 from parameterized import parameterized
 from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoTokenizer
-from transformers.testing_utils import require_peft, require_torch_accelerator
+from transformers.testing_utils import require_peft
 from transformers.utils import is_peft_available
 
-from trl import OnlineDPOConfig, OnlineDPOTrainer, is_llm_blender_available, is_vllm_available
-
-from .testing_utils import RandomPairwiseJudge
+from trl import OnlineDPOConfig, OnlineDPOTrainer, RandomPairwiseJudge, is_llm_blender_available
+from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
 
 if is_peft_available():
@@ -32,16 +30,15 @@ if is_peft_available():
 
 class TestOnlineDPOTrainer(unittest.TestCase):
     def setUp(self):
-        self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
+        self.model_id = "trl-internal-testing/dummy-GPT2-correct-vocab"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.ref_model = AutoModelForCausalLM.from_pretrained(self.model_id)
+        self.reward_model = AutoModelForSequenceClassification.from_pretrained("EleutherAI/pythia-14m", num_labels=1)
+        self.reward_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/pythia-14m")
+        self.reward_tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
+        self.reward_tokenizer.pad_token = self.reward_tokenizer.eos_token
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
-
-        self.reward_model_id = "trl-internal-testing/tiny-LlamaForCausalLM-3.2"
-        self.reward_model = AutoModelForSequenceClassification.from_pretrained(self.reward_model_id, num_labels=1)
-        self.reward_tokenizer = AutoTokenizer.from_pretrained(self.reward_model_id)
-        self.reward_tokenizer.pad_token = self.reward_tokenizer.eos_token
 
     @parameterized.expand([("standard_prompt_only",), ("conversational_prompt_only",)])
     def test_training(self, config_name):
@@ -234,36 +231,6 @@ class TestOnlineDPOTrainer(unittest.TestCase):
                 train_dataset=dummy_dataset["train"],
                 eval_dataset=dummy_dataset["test"],
                 processing_class=self.tokenizer,
-            )
-            trainer.train()
-
-            # Check if training loss is available
-            self.assertIn("train_loss", trainer.state.log_history[-1])
-
-    @unittest.skipIf(not is_vllm_available(), "vllm is not available")
-    @parameterized.expand([("standard_prompt_only",), ("conversational_prompt_only",)])
-    @require_torch_accelerator
-    def test_training_with_vllm(self, config_name):
-        model_id = "trl-internal-testing/small-Qwen2ForCausalLM-2.5"  # We neeed a bigger model
-        model = AutoModelForCausalLM.from_pretrained(model_id)
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        tokenizer.pad_token = tokenizer.eos_token
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            training_args = OnlineDPOConfig(
-                output_dir=tmp_dir,
-                use_vllm=True,
-                report_to="none",
-            )
-            dummy_dataset = load_dataset("trl-internal-testing/zen", config_name)
-
-            trainer = OnlineDPOTrainer(
-                model=model,
-                reward_model=self.reward_model,
-                args=training_args,
-                train_dataset=dummy_dataset["train"],
-                processing_class=tokenizer,
-                reward_processing_class=self.reward_tokenizer,
             )
             trainer.train()
 

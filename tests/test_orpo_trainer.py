@@ -1,4 +1,4 @@
-# Copyright 2025 The HuggingFace Team. All rights reserved.
+# Copyright 2024 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import tempfile
 import unittest
 
@@ -22,27 +21,25 @@ from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokeni
 from transformers.testing_utils import require_peft
 
 from trl import ORPOConfig, ORPOTrainer
-from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
 
 class ORPOTrainerTester(unittest.TestCase):
     def setUp(self):
-        self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
+        self.model_id = "trl-internal-testing/dummy-GPT2-correct-vocab"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # get t5 as seq2seq example:
-        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration"
+        model_id = "trl-internal-testing/tiny-T5ForConditionalGeneration-correct-vocab"
         self.t5_model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
         self.t5_tokenizer = AutoTokenizer.from_pretrained(model_id)
-        self.t5_tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
 
     @parameterized.expand(
         [
-            ("qwen", "standard_preference"),
+            ("gpt2", "standard_preference"),
             ("t5", "standard_implicit_prompt_preference"),
-            ("qwen", "conversational_preference"),
+            ("gpt2", "conversational_preference"),
             ("t5", "conversational_implicit_prompt_preference"),
         ]
     )
@@ -62,7 +59,7 @@ class ORPOTrainerTester(unittest.TestCase):
 
             dummy_dataset = load_dataset("trl-internal-testing/zen", config_name)
 
-            if name == "qwen":
+            if name == "gpt2":
                 model = self.model
                 tokenizer = self.tokenizer
             elif name == "t5":
@@ -84,10 +81,11 @@ class ORPOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 new_param = trainer.model.get_parameter(n)
-                if param.sum() != 0:  # ignore 0 biases
+                # check the params have changed - ignore 0 biases
+                if param.sum() != 0:
                     self.assertFalse(torch.equal(param, new_param))
 
     @parameterized.expand(
@@ -140,9 +138,10 @@ class ORPOTrainerTester(unittest.TestCase):
 
             self.assertIsNotNone(trainer.state.log_history[-1]["train_loss"])
 
-            # Check that the parameters have changed
+            # check the params have changed
             for n, param in previous_trainable_params.items():
                 if "lora" in n:
                     new_param = trainer.model.get_parameter(n)
-                    if param.sum() != 0:  # ignore 0 biases
+                    # check the params have changed - ignore 0 biases
+                    if param.sum() != 0:
                         self.assertFalse(torch.equal(param, new_param))
