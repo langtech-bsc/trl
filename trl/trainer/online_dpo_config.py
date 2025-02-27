@@ -62,6 +62,7 @@ class OnlineDPOConfig(TrainingArguments):
 
     learning_rate: float = 5e-7
     reward_model_path: Optional[str] = None
+    ref_model_path: Optional[str] = None
     judge: Optional[str] = None
     max_new_tokens: int = 64
     temperature: float = 0.9
