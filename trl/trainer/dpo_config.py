@@ -165,6 +165,7 @@ class DPOConfig(TrainingArguments):
     precompute_ref_log_probs: bool = False
     dataset_num_proc: Optional[int] = None
     model_init_kwargs: Optional[Dict[str, Any]] = None
+    ref_model_path: Optional[str] = None
     ref_model_init_kwargs: Optional[Dict[str, Any]] = None
     model_adapter_name: Optional[str] = None
     ref_adapter_name: Optional[str] = None
