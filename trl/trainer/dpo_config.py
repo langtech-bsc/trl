@@ -194,6 +194,12 @@ class DPOConfig(TrainingArguments):
             "the `DPOTrainer` is provided as a string."
         },
     )
+    ref_model_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Path to reference model"
+        }
+    )
     ref_model_init_kwargs: Optional[dict[str, Any]] = field(
         default=None,
         metadata={
