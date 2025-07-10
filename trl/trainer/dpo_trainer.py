@@ -1288,6 +1288,8 @@ class DPOTrainer(Trainer):
 
         # TODO: ld alpha has been changed to ddl alpha implementation
         if self.args.ld_alpha is not None and not is_ref_model:
+            import datetime
+            print(f"{datetime.datetime.now()} Using Seve's ddl_alpha")
             # Compute response lengths based on loss_mask
             # completion_lengths = loss_mask.sum(dim=1)
 
@@ -1320,6 +1322,7 @@ class DPOTrainer(Trainer):
             position_ids = torch.arange(seq_len, device=per_token_logps.device).expand_as(per_token_logps)
 
             ddl_alpha = (self.args.ld_alpha * seq_len + (1 - self.args.ld_alpha) * (seq_len - public_lengths)) / seq_len
+            print(f"ddl_alpha: {ddl_alpha}")
 
             all_logps = ddl_alpha * per_token_logps.sum(dim=1)
 
