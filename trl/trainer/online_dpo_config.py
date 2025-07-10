@@ -87,7 +87,12 @@ class OnlineDPOConfig(TrainingArguments):
             )
         },
     )
-
+    ref_model_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Path to the reference model. If not specified, the same model as `model_name_or_path` is used."
+        },
+    )
     reward_model_path: Optional[str] = field(
         default=None,
         metadata={
