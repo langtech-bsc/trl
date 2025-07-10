@@ -1286,27 +1286,43 @@ class DPOTrainer(Trainer):
         if self.loss_type == "ipo":
             all_logps = all_logps / loss_mask.sum(-1)
 
+        # TODO: ld alpha has been changed to ddl alpha implementation
         if self.args.ld_alpha is not None and not is_ref_model:
             # Compute response lengths based on loss_mask
+            # completion_lengths = loss_mask.sum(dim=1)
+
+            # chosen_lengths = completion_lengths[:num_examples]
+            # rejected_lengths = completion_lengths[num_examples:]
+            # public_lengths = torch.min(chosen_lengths, rejected_lengths)  # l_min
+            # public_lengths = torch.cat([public_lengths, public_lengths], dim=0)
+ 
+            # seq_len = per_token_logps.size(1)  # l_x
+            # position_ids = torch.arange(seq_len, device=per_token_logps.device).expand_as(per_token_logps)
+
+            # ld_mask = position_ids < public_lengths.unsqueeze(1)
+            # mask = position_ids < completion_lengths.unsqueeze(1)
+
+            # front_mask = (ld_mask & mask).float()
+            # rear_mask = (~ld_mask & mask).float()
+            # front_logps = (per_token_logps * front_mask).sum(dim=1)
+            # rear_logps = (per_token_logps * rear_mask).sum(dim=1)
+
+            # all_logps = front_logps + self.args.ld_alpha * rear_logps
+            
             completion_lengths = loss_mask.sum(dim=1)
 
             chosen_lengths = completion_lengths[:num_examples]
             rejected_lengths = completion_lengths[num_examples:]
-            public_lengths = torch.min(chosen_lengths, rejected_lengths)  # l_p in the paper
+            public_lengths = torch.min(chosen_lengths, rejected_lengths)  # l_min
             public_lengths = torch.cat([public_lengths, public_lengths], dim=0)
 
-            seq_len = per_token_logps.size(1)
+            seq_len = per_token_logps.size(1)  # l_x
             position_ids = torch.arange(seq_len, device=per_token_logps.device).expand_as(per_token_logps)
 
-            ld_mask = position_ids < public_lengths.unsqueeze(1)
-            mask = position_ids < completion_lengths.unsqueeze(1)
+            ddl_alpha = (self.args.ld_alpha * seq_len + (1 - self.args.ld_alpha) * (seq_len - public_lengths)) / seq_len
 
-            front_mask = (ld_mask & mask).float()
-            rear_mask = (~ld_mask & mask).float()
-            front_logps = (per_token_logps * front_mask).sum(dim=1)
-            rear_logps = (per_token_logps * rear_mask).sum(dim=1)
+            all_logps = ddl_alpha * per_token_logps.sum(dim=1)
 
-            all_logps = front_logps + self.args.ld_alpha * rear_logps
 
         output["chosen_logps"] = all_logps[:num_examples]
         output["rejected_logps"] = all_logps[num_examples:]
