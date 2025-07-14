@@ -1321,7 +1321,7 @@ class DPOTrainer(Trainer):
             seq_len = per_token_logps.size(1)  # l_x
             position_ids = torch.arange(seq_len, device=per_token_logps.device).expand_as(per_token_logps)
 
-            ddl_alpha = (self.args.ld_alpha * seq_len + (1 - self.args.ld_alpha) * (seq_len - public_lengths)) / seq_len
+            ddl_alpha = (self.args.ld_alpha * seq_len + (1 - self.args.ld_alpha) * public_lengths) / seq_len
             print(f"ddl_alpha: {ddl_alpha}")
 
             all_logps = ddl_alpha * per_token_logps.sum(dim=1)
